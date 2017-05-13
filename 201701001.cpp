@@ -40,49 +40,7 @@ extern int B(int x, int y, int def = OUTBD);
 
 static int MC;
 static int EC;
-
-int getScore(int value, int color)
-{
-	int weight = 1;
-	if (color == EC)
-		weight = -WEIGHT;
-	switch(value) {
-	case 1:
-		return 10 * weight;
-	case 2:
-		return 40 * weight;
-	case 3:
-		return 160 * weight;
-	case 4:
-		return 640 * weight;
-	case 5:
-		return 10000 * weight;
-	default:
-		return value * weight;
-	}
-}
-
-int getBoundedScore(int value, int color)
-{
-	int weight = 1;
-	if (color == EC)
-		weight = -WEIGHT;
-	switch(value) {
-	case 1:
-		return 0 * weight;
-	case 2:
-		return 1 * weight;
-	case 3:
-		return 2 * weight;
-	case 4:
-		return 3 * weight;
-	case 5:
-		return 100000 * weight;
-	default:
-		return value * weight;
-	}
-}
-
+/*
 int getBlockScore(int count, int block, int color)
 {
 	int blockWeight = 2 - block; // block은 0~2의 값이고 크면 역가중치
@@ -108,7 +66,48 @@ int getBlockScore(int count, int block, int color)
 	
 	return returnValue;
 }
-
+*/
+int getBlockScore(int count, int block, int color)
+{
+	int colorWeight = 1; // 색가중치 기본 = 1
+	int returnValue = 0;
+	if(color == EC)
+		colorWeight = -2;
+	
+	if(count == 1) {
+		if(block == 0)
+			returnValue = 2 * colorWeight;
+		if(block == 1)
+			returnValue = 1 * colorWeight;
+	}
+	else if(count == 2) {
+		if(block == 0)
+			returnValue = 4 * colorWeight;
+		if(block == 1)
+			returnValue = 2 * colorWeight;
+	}
+	else if(count == 3) {
+		if(block == 0)
+			returnValue = 32 * colorWeight; // 3개에서 1쪽 막힌거와 안 막힌거의 차이는 크다
+		if(block == 1)
+			returnValue = 8 * colorWeight;
+	}
+	else if(count == 4) {
+		if(block == 0)
+			returnValue = 1024 * colorWeight; // 사실상 게임 끝
+		if(block == 1)
+			returnValue = 64 * colorWeight;
+	}
+	else if(count == 5) {
+		returnValue = 1024 * colorWeight; // 그냥 게임 끝
+	}
+	else {
+		printf("제발 오류 뱉어라\n");
+		returnValue = count * (2 - block) * colorWeight;
+	}
+	
+	return returnValue;
+}
 class Board {
 private:
 	int board[MAXXY][MAXXY];
@@ -130,13 +129,23 @@ public:
 			}
 		}
 	}
-	int boardValue(int x, int y)
+	int boardValue(int x, int y) // 좌표에 있는 값을 반환(BLACK, WHITE, EMPTY)
 	{
-		// 좌표에 있는 값을 반환(BLACK, WHITE, EMPTY)
 		if((0 <= x && x < MAXXY) && (0 <= y && y < MAXXY)) // 0 ~ 15
 			return board[y][x];
 		else
 			return OUTBD;
+	}
+	bool isNear(const int x, const int y) // 해당 위치 주변에 돌이 있는지를 판단
+	{
+		int _y, _x;
+		for(_y = y - 1; _y <= y + 1; _y++) {
+			for(_x = x - 1; _x <= x + 1; _x++) {
+				if(boardValue(_x, _y) == WHITE || boardValue(_x, _y) == BLACK)
+					return true;
+			}
+		}
+		return false;
 	}
 	void setEval(int _eval)
 	{
@@ -146,9 +155,8 @@ public:
 	{
 		return eval;
 	}
-	void addXY(int x, int y, int color)
+	void addXY(int x, int y, int color) // 새 말을 놓고 newX, newY를 업데이트한다.
 	{
-		// 새 말을 놓고 newX, newY를 업데이트한다.
 		board[y][x] = color;
 		new_x = x;
 		new_y = y;
@@ -163,176 +171,7 @@ public:
 		x = new_x;
 		y = new_y;
 	}
-	void evaluation() // evaluation function
-	{
-		int x, y, i;
-		int tempEval = 0;
-		// 바둑판에 배치된 모든 말에 대해 검사한다.
-		for (y = 0; y < MAXXY; y++) {
-			for (x = 0; x < MAXXY; x++) {
-				int currentColor = board[y][x]; // 현재 위치의 색깔
-				if (currentColor == WHITE && currentColor == BLACK) { // 빈 공간이 아닐 경우
-					int enemyColor = (currentColor == WHITE) ? BLACK : WHITE;
-
-					int tempValue = 1;
-					bool isBlocked = false;
-					for (i = 1; i <= 4; i++) { // up
-						if (y - i < 0) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // up-right
-						if (y - i < 0 || x + i >= MAXXY) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x + i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x + i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // right
-						if (x + i >= MAXXY) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y][x + i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y][x + i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // right-down
-						if (x + i >= MAXXY || y + i >= MAXXY) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x + i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x + i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // down
-						if (y + i >= MAXXY) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // down-left
-						if (y + i >= MAXXY || x - i < 0) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x - i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y + i][x - i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // left
-						if (x - i < 0) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y][x - i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y][x - i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-
-					tempValue = 1;
-					isBlocked = false;
-					for (i = 1; i <= 4; i++) { // left - up
-						if (x - i < 0 || y - i < 0) { // 바둑판 바깥으로 넘어가면
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x - i] != currentColor) {
-							isBlocked = true;
-							break;
-						}
-						if (board[y - i][x - i] == currentColor) // 내 말이면 임시점수 + 1
-							tempValue++;
-					}
-					if (isBlocked)
-						tempEval += getBoundedScore(tempValue, currentColor);
-					else
-						tempEval += getScore(tempValue, currentColor);
-				}
-			}
-		}
-		eval = tempEval;
-	}
-
-	void evaluation2()
+	void evaluation()
 	{
 		int x, y, i;
 		int tempEval = 0;
@@ -443,7 +282,7 @@ int minNode(int a, int b)
 Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 {
 	if (depth == 0) {
-		node.evaluation2();
+		node.evaluation();
 		int temp = node.getEval();
 		return node;
 	}
@@ -460,7 +299,7 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 		for (i = 0; i < MAXXY; i++) {
 			for (j = 0; j < MAXXY; j++) {
 				// 해당 칸이 빈칸인 경우에만 트리를 생성
-				if (node.boardValue(i, j) == EMPTY) {
+				if (node.boardValue(i, j) == EMPTY && node.isNear(i, j)) {
 					Board nextNode = node; // minmax 함수에 들어감 임시 노드
 					nextNode.addXY(i, j, MC); // xy 경우의 수 대입
 
@@ -495,7 +334,7 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 		for (i = 0; i < MAXXY; i++) {
 			for (j = 0; j < MAXXY; j++) {
 				// 해당 칸이 빈칸인 경우에만 트리를 생성
-				if (node.boardValue(i, j) == EMPTY) {
+				if (node.boardValue(i, j) == EMPTY && node.isNear(i, j)) {
 					Board nextNode = node; // minmax 함수에 들어감 임시 노드
 					nextNode.addXY(i, j, EC); // 임시 노드의 xy 좌표에 돌을 놓음
 
@@ -534,7 +373,7 @@ void f201701001(int *NewX, int *NewY, int mc, int CurTurn)
 	current_board.initBoard(); // 현재 판으로 초기화
 
 	int alpha = -99999, beta = 99999;
-	Board new_board = minimax(current_board, 1, alpha, beta, true);
+	Board new_board = minimax(current_board, 3, alpha, beta, true);
 
 	new_board.getXY(*NewX, *NewY);
 
