@@ -2,10 +2,11 @@
 
 /*
 ■아래에 팀정보를 기재하세요.
-대학명: 지역선도대학교
-팀  명: 우리팀
-팀  원: 홍길동(컴퓨터공학과 4학년),...
+대학명: 경북대학교
+팀  명: 내일부터패치
+팀  원: 김우찬(컴퓨터학부 3학년)
 제출일: 2017.5.10
+제출코드: 22702680
 
 ■작성 시 주의사항
 - C++기본 문법에 의하여 작성
@@ -99,7 +100,10 @@ int getBlockScore(int count, int block, int color)
 			returnValue = 64 * colorWeight;
 	}
 	else if(count == 5) {
-		returnValue = 1024 * colorWeight; // 그냥 게임 끝
+		if(color == MC)
+			returnValue = 99999;
+		else
+			returnValue = 1024 * colorWeight; // 그냥 게임 끝
 	}
 	else {
 		printf("제발 오류 뱉어라\n");
@@ -155,11 +159,85 @@ public:
 	{
 		return eval;
 	}
-	void addXY(int x, int y, int color) // 새 말을 놓고 newX, newY를 업데이트한다.
+	bool addXY(int _x, int _y, int color) // 새 말을 놓고 newX, newY를 업데이트한다, 5개짜리 돌이 나오면 true 리턴
 	{
-		board[y][x] = color;
-		new_x = x;
-		new_y = y;
+		board[_y][_x] = color;
+		new_x = _x;
+		new_y = _y;
+		// 바둑알을 놓으면서 5개가 되는지 확인
+		int x, y, i;
+		for (y = -1; y <= MAXXY; y++) {
+			for (x = -1; x <= MAXXY; x++) {
+				int current = boardValue(x, y); // 현재 위치의 상태
+				int myCount, enemy;
+				int right = boardValue(x + 1, y);
+				int rightDown = boardValue(x + 1, y + 1);
+				int down = boardValue(x, y + 1);
+				int downLeft = boardValue(x - 1, y + 1);
+
+				if ((right == color) && current != right) { // right가 바둑알이면서 현재 위치의 상태와 다를 때
+					enemy = (right == WHITE) ? BLACK : WHITE;
+					myCount = 1;
+					for(i = 2; i <= 5; i++) {
+						int tempVal = boardValue(x + i, y);
+						if(tempVal == OUTBD || tempVal == enemy) {
+							break;
+						}
+						if(tempVal == EMPTY)
+							break;
+						myCount++;
+						if(myCount == 5)
+							return true;
+					}
+				}
+				if ((rightDown == color) && current != rightDown) { // right-down가 바둑알이면서 현재 위치의 상태와 다를 때
+					enemy = (rightDown == WHITE) ? BLACK : WHITE;
+					myCount = 1;
+					for(i = 2; i <= 5; i++) {
+						int tempVal = boardValue(x + i, y + i);
+						if(tempVal == OUTBD || tempVal == enemy) {
+							break;
+						}
+						if(tempVal == EMPTY)
+							break;
+						myCount++;
+						if(myCount == 5)
+							return true;
+					}
+				}
+				if ((down == color) && current != down) { // down가 바둑알이면서 현재 위치와는 다를 때
+					enemy = (down == WHITE) ? BLACK : WHITE;
+					myCount = 1;
+					for(i = 2; i <= 5; i++) {
+						int tempVal = boardValue(x, y + i);
+						if(tempVal == OUTBD || tempVal == enemy) {
+							break;
+						}
+						if(tempVal == EMPTY)
+							break;
+						myCount++;
+						if(myCount == 5)
+							return true;
+					}
+				}
+				if ((downLeft == color) && current != downLeft) { // down-left가 바둑알이면서 현재 위치와는 다를 때
+					enemy = (downLeft == WHITE) ? BLACK : WHITE;
+					myCount = 1;
+					for(i = 2; i <= 5; i++) {
+						int tempVal = boardValue(x - i, y + i);
+						if(tempVal == OUTBD || tempVal == enemy) {
+							break;
+						}
+						if(tempVal == EMPTY)
+							break;
+						myCount++;
+						if(myCount == 5)
+							return true;
+					}
+				}
+			}
+		}
+		return false;
 	}
 	void setXY(int x, int y)
 	{
@@ -171,7 +249,7 @@ public:
 		x = new_x;
 		y = new_y;
 	}
-	void evaluation()
+	void evaluation(int depth)
 	{
 		int x, y, i;
 		int tempEval = 0;
@@ -259,7 +337,7 @@ public:
 				}
 			}
 		}
-		eval = tempEval;
+		eval = tempEval * depth;
 	}
 };
 
@@ -282,7 +360,7 @@ int minNode(int a, int b)
 Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 {
 	if (depth == 0) {
-		node.evaluation();
+		node.evaluation(depth + 1);
 		int temp = node.getEval();
 		return node;
 	}
@@ -294,24 +372,28 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 	// xy값은 반환받은 노드의 것을 사용하면 안 되고 현 함수의 ij를 사용해야함
 
 	if (maximizingPlayer) { // (최대값을 고르는) 내 턴일 경우
-		int bestValue = -99999;
+		int bestValue = -99999, v;
 		int bestX = 0, bestY = 0;
 		for (i = 0; i < MAXXY; i++) {
 			for (j = 0; j < MAXXY; j++) {
 				// 해당 칸이 빈칸인 경우에만 트리를 생성
 				if (node.boardValue(i, j) == EMPTY && node.isNear(i, j)) {
 					Board nextNode = node; // minmax 함수에 들어감 임시 노드
-					nextNode.addXY(i, j, MC); // xy 경우의 수 대입
 
-					// 반환받은 노드의 eval값만 사용하고 나머지는 버림(어차피 x, y값은 첫 함수의 값을 반환해야하기때문에)
-					int v = minimax(nextNode, depth - 1, alpha, beta, false).getEval();
-
+					if(nextNode.addXY(i, j, MC)) { // xy 경우의 수 대입(5개짜리 돌이 있으면 true)
+						nextNode.evaluation(depth);
+						v = nextNode.getEval();
+					}
+					else {
+						// 반환받은 노드의 eval값만 사용하고 나머지는 버림(어차피 x, y값은 첫 함수의 값을 반환해야하기때문에)
+						v = minimax(nextNode, depth - 1, alpha, beta, false).getEval();
+					}
 					bestValue = maxNode(bestValue, v);
 					if (bestValue == v) {
 						bestX = i;
 						bestY = j;
 					}
-					/*
+					
 					// alpha-beta pruning
 					alpha = maxNode(alpha, bestValue);
 					if (beta <= alpha) {
@@ -319,7 +401,7 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 						node.setXY(bestX, bestY);
 						return node;
 					}
-					*/
+					
 				}
 			}
 		}
@@ -329,23 +411,27 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 		return node;
 	}
 	else { // minimizingPlayer
-		int bestValue = 99999;
+		int bestValue = 99999, v;
 		int bestX = 0, bestY = 0;
 		for (i = 0; i < MAXXY; i++) {
 			for (j = 0; j < MAXXY; j++) {
 				// 해당 칸이 빈칸인 경우에만 트리를 생성
 				if (node.boardValue(i, j) == EMPTY && node.isNear(i, j)) {
 					Board nextNode = node; // minmax 함수에 들어감 임시 노드
-					nextNode.addXY(i, j, EC); // 임시 노드의 xy 좌표에 돌을 놓음
-
-					int v = minimax(nextNode, depth - 1, alpha, beta, true).getEval();
-
+					if(nextNode.addXY(i, j, EC)) { // xy 경우의 수 대입(5개짜리 돌이 있으면 true)
+						nextNode.evaluation(depth);
+						v = nextNode.getEval();
+					}
+					else {
+						// 반환받은 노드의 eval값만 사용하고 나머지는 버림(어차피 x, y값은 첫 함수의 값을 반환해야하기때문에)
+						v = minimax(nextNode, depth - 1, alpha, beta, true).getEval();
+					}
 					bestValue = minNode(bestValue, v);
 					if (bestValue == v) {
 						bestX = i;
 						bestY = j;
 					}
-					/*
+					
 					// alpha-beta pruning
 					beta = minNode(beta, bestValue);
 					if (beta <= alpha) {
@@ -353,7 +439,7 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 						node.setXY(bestX, bestY);
 						return node;
 					}
-					*/
+					
 				}
 			}
 		}
