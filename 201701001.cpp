@@ -63,18 +63,18 @@ int getBlockScore(int count, int block, int color)
 	}
 	else if(count == 3) {
 		if(block == 0)
-			returnValue = 48 * colorWeight; // 3개에서 1쪽 막힌거와 안 막힌거의 차이는 크다
+			returnValue = 480 * colorWeight; // 3개에서 1쪽 막힌거와 안 막힌거의 차이는 크다
 		if(block == 1)
 			returnValue = 16 * colorWeight;
 	}
 	else if(count == 4) {
 		if(block == 0)
-			returnValue = 192 * colorWeight; // 사실상 게임 끝
+			returnValue = 1920 * colorWeight; // 사실상 게임 끝
 		if(block == 1)
 			returnValue = 128 * colorWeight;
 	}
 	else { // count == 5
-		returnValue = 1920 * colorWeight; // 그냥 게임 끝
+		returnValue = 19200 * colorWeight; // 그냥 게임 끝
 	}
 	return returnValue;
 }
