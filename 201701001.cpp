@@ -1,5 +1,8 @@
 #include "stdafx.h"
-
+#include <iostream>
+#include <fstream>
+using namespace std;
+ofstream output("log.txt");
 /*
 ■아래에 팀정보를 기재하세요.
 대학명: 경북대학교
@@ -47,7 +50,7 @@ int getBlockScore(int BlockAry[][3], int color)
 	double colorWeight = 1; // 색가중치 기본 = 1
 	int returnValue = 0;
 	if(color == EC)
-		colorWeight = -10;
+		colorWeight = -1.5;
 
 	// --------------------------------------------------------------------
 	// 연속돌 1개 + 1개 막힘
@@ -56,30 +59,30 @@ int getBlockScore(int BlockAry[][3], int color)
 	returnValue += BlockAry[1][0] * 3;
 	// --------------------------------------------------------------------
 	// 연속돌 2개 + 1개 막힘
-	returnValue += BlockAry[2][1] * 6;
+	returnValue += BlockAry[2][1] * 10;
 	// 연속돌 2개 + 0개 막힘
-	returnValue += BlockAry[2][0] * 9;
+	returnValue += BlockAry[2][0] * 30;
 	// --------------------------------------------------------------------
 	// 연속돌 3개 + 1개 막힘
-	returnValue += BlockAry[3][1] * 18;
+	returnValue += BlockAry[3][1] * 100;
 	// 연속돌 3개 + 0개 막힘
 	if (BlockAry[3][0] >= 2)
-		returnValue += 540;					/* 엔딩조건 */
+		returnValue += 3000;					/* 승부결정 */
 	else
-		returnValue += BlockAry[3][0] * 27;
+		returnValue += BlockAry[3][0] * 300;
 	// --------------------------------------------------------------------
 	// 연속돌 4개 + 1개 막힘
 	if (BlockAry[4][1] >= 2)
-		returnValue += 1080;				/* 엔딩조건 */
+		returnValue += 3000;				/* 승부결정 */
 	else
-		returnValue += BlockAry[4][1] * 180;
+		returnValue += BlockAry[4][1] * 1000;
 	// 연속돌 4개 + 0개 막힘
-	returnValue += BlockAry[4][0] * 1080;	/* 엔딩조건 */
+	returnValue += BlockAry[4][0] * 3000;	/* 승부결정 */
 	// --------------------------------------------------------------------
 	// 연속돌 5개
-	returnValue += BlockAry[5][2] * 10800;	/* 엔딩조건 */
-	returnValue += BlockAry[5][1] * 10800;	/* 엔딩조건 */
-	returnValue += BlockAry[5][0] * 10800;	/* 엔딩조건 */
+	returnValue += BlockAry[5][2] * 50000;	/* 엔딩조건 */
+	returnValue += BlockAry[5][1] * 50000;	/* 엔딩조건 */
+	returnValue += BlockAry[5][0] * 50000;	/* 엔딩조건 */
 	// --------------------------------------------------------------------
 
 	return (int)(returnValue * colorWeight);
@@ -104,6 +107,23 @@ public:
 				board[j][i] = B(i, j);
 			}
 		}
+		// 로그작성
+		int x, y;
+		output << "eval: " << eval << endl;
+		for (y = 0; y < MAXXY; y++) {
+			for (x = 0; x < MAXXY; x++) {
+				int temp = B(x, y);
+				if (temp == EMPTY)
+					output << "E ";
+				else if (temp == MC)
+					output << "m ";
+				else if (temp == EC)
+					output << "e ";
+			}
+			output << endl;
+		}
+		output << endl;
+		// 로그작성 종료
 	}
 	int boardValue(int x, int y) // 좌표에 있는 값을 반환(BLACK, WHITE, EMPTY)
 	{
@@ -114,7 +134,8 @@ public:
 	}
 	bool isNear(const int x, const int y) // 해당 위치 주변에 돌이 있는지를 판단
 	{
-		int _y, _x, dist = 2;
+		int _y, _x;
+		int dist = 1;
 		for(_y = y - dist; _y <= y + dist; _y++) {
 			for(_x = x - dist; _x <= x + dist; _x++) {
 				if(boardValue(_x, _y) == WHITE || boardValue(_x, _y) == BLACK)
@@ -139,6 +160,12 @@ public:
 		// 바둑알을 놓으면서 5개가 되는지 확인
 		int x, y, i;
 		int BlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 카운트(몇개인지)
+		// Init Ary
+		for (int i = 0; i < 6; i++) {
+			for (int j = 0; j < 3; j++) {
+				BlockAry[i][j] = 0;
+			}
+		}
 		for (y = -1; y <= MAXXY; y++) {
 			for (x = -1; x <= MAXXY; x++) {
 				int current = boardValue(x, y); // 현재 위치의 상태
@@ -227,8 +254,12 @@ public:
 			}
 		}
 		//if (BlockAry[3][2] >= 2 || BlockAry[4][1] >= 2 || BlockAry[4][2] >= 1 || BlockAry[5][0] >= 1 || BlockAry[5][1] >= 1 || BlockAry[5][2] >= 1)
-		if (BlockAry[5][0] >= 1 || BlockAry[5][1] >= 1 || BlockAry[5][2] >= 1)
+		if (BlockAry[5][0] >= 1 || BlockAry[5][1] >= 1 || BlockAry[5][2] >= 1) {
+			// 로그
+			output << "Five In A Raw!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << endl;
+			// log
 			return true;
+		}
 		else
 			return false;
 	}
@@ -246,7 +277,7 @@ public:
 	{
 		int x, y, i, j;
 		int tempEval = 0;
-		int MCBlockAry[6][3], ECBlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 카운트(몇개인지)
+		int MCBlockAry[6][3], ECBlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 막힌 방향 개수
 		// Init Ary
 		for (int i = 0; i < 6; i++) {
 			for (int j = 0; j < 3; j++) {
@@ -357,6 +388,42 @@ public:
 		tempEval += getBlockScore(MCBlockAry, MC);
 		tempEval += getBlockScore(ECBlockAry, EC);
 		eval = tempEval * depth * 2;
+		// 로그작성
+		output << "eval: " << eval << endl;
+		/*
+		for (y = 0; y < MAXXY; y++) {
+			for (x = 0; x < MAXXY; x++) {
+				if (B(x, y) == -1)
+					output << 'E';
+				else
+					output << B(x, y);
+			}
+			output << endl;
+		}
+		*/
+		if (depth == 1)
+			output << "ENEMY => ";
+		else
+			output << "ME => ";
+		output << "X: " << new_x << ", " << "Y: " << new_y << endl;
+		output << "MC[][0]:\t";
+		for (i = 1; i < 6; i++) {
+			 output << MCBlockAry[i][0] << '\t';
+		} output << endl;
+		output << "MC[][1]:\t";
+		for (i = 1; i < 6; i++) {
+			 output << MCBlockAry[i][1] << '\t';
+		} output << endl;
+		output << "EC[][0]:\t";
+		for (i = 1; i < 6; i++) {
+			output << ECBlockAry[i][0] << '\t';
+		} output << endl;
+		output << "EC[][1]:\t";
+		for (i = 1; i < 6; i++) {
+			output << ECBlockAry[i][1] << '\t';
+		} output << endl;
+		output << endl;
+		// 로그작성 종료
 	}
 };
 
@@ -474,9 +541,9 @@ void f201701001(int *NewX, int *NewY, int mc, int CurTurn)
 	int ec = (mc == WHITE) ? BLACK : WHITE;	//	적의 색 확인
 	MC = mc;
 	EC = ec;
-
-	srand(time(NULL));
-
+	// 로그
+	output << "Current Turn: " << CurTurn << endl;
+	// 로그
 	Board current_board;
 	current_board.initBoard(); // 현재 판으로 초기화
 
@@ -486,16 +553,18 @@ void f201701001(int *NewX, int *NewY, int mc, int CurTurn)
 	new_board.getXY(NewX, NewY);
 
 	if (CurTurn == 0) {
-		*NewX = rand() % MAXXY;
-		*NewY = rand() % MAXXY;
+		*NewX = rand() % 5 + 6;
+		*NewY = rand() % 5 + 6;
 	}
 	while(1) {
 		if (B(*NewX, *NewY) == EMPTY) {
 			break;
 		}
-		*NewX = rand() % MAXXY;
-		*NewY = rand() % MAXXY;
+		*NewX = rand() % 5 + 6;
+		*NewY = rand() % 5 + 6;
 	}
-
+	// 로그 작성
+	output << "choice eval: " << new_board.getEval() << endl << endl << endl;
+	// 로그 작성 종료
 }
 
