@@ -9,6 +9,8 @@
 #define IDC_BUTTON_FORE                 1002
 #define IDC_BUTTON_SAVE                 1003
 #define IDC_BUTTON_LOAD                 1004
+#define IDC_BUTTON_SEND					1005
+#define IDC_BUTTON_RECV					1006
 
 // Next default values for new objects
 // 
