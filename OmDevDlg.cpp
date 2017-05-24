@@ -256,3 +256,39 @@ BOOL COmDevDlg::IsGameOver()
 
 	return FALSE;
 }
+void COmDevDlg::OnButtonRecv() 
+{
+	CWnd *pWnd = FindWindow("ShowOmok",NULL);
+	if (pWnd == NULL) return;
+	if (pWnd->SendMessage(WM_USER+1111, -1) == TRUE) {
+		unsigned char Order[0x100];
+
+		HANDLE hBuff;
+		LPSTR pBuff=NULL;
+		if (!OpenClipboard())	return; 
+		hBuff = GetClipboardData(CF_TEXT);
+		pBuff=(LPSTR)GlobalLock(hBuff);
+		memcpy(&CurTurn, pBuff, sizeof CurTurn);
+		memcpy(Order, pBuff+sizeof CurTurn, sizeof Order);
+		GlobalUnlock(hBuff);
+		CloseClipboard();
+
+		for (int i = 0; i < MAXTURN; i++) {
+			x[i] = Order[i]&0xf;
+			y[i] = Order[i]>>4;
+		}
+		Invalidate();
+	}
+}
+
+//[보내기]버튼 코드 - OmDev에서 마지막 둔 알을 ShowOmok에 둠
+void COmDevDlg::OnButtonSend() 
+{
+	CWnd *pWnd = FindWindow("ShowOmok",NULL);
+	if (pWnd == NULL || CurTurn == 0) return;
+	int xy = (y[CurTurn-1]<<16) | x[CurTurn-1];
+	if (pWnd->SendMessage(WM_USER+1111, xy) == TRUE) {
+		Sleep(1000);
+		OnButtonRecv();
+	}
+}

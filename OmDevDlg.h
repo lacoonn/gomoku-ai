@@ -70,6 +70,10 @@ protected:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnLButtonDown(UINT nFlags, CPoint point);
 	afx_msg void OnRButtonDown(UINT nFlags, CPoint point);
+	//[받기]버튼 코드 - 현재 ShowOmok에 떠 있는 알을 그대로 가져옴
+	afx_msg void COmDevDlg::OnButtonRecv() ;
+	//[보내기]버튼 코드 - OmDev에서 마지막 둔 알을 ShowOmok에 둠
+	afx_msg void COmDevDlg::OnButtonSend() ;
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
 };

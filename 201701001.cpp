@@ -42,41 +42,47 @@ extern int B(int x, int y, int def = OUTBD);
 static int MC;
 static int EC;
 
-int getBlockScore(int count, int block, int color)
+int getBlockScore(int BlockAry[][3], int color)
 {
-	int colorWeight = 1; // 색가중치 기본 = 1
+	double colorWeight = 1; // 색가중치 기본 = 1
 	int returnValue = 0;
 	if(color == EC)
 		colorWeight = -10;
 
-	if(count == 1) {
-		if(block == 0)
-			returnValue = 3 * colorWeight;
-		if(block == 1)
-			returnValue = 1 * colorWeight;
-	}
-	else if(count == 2) {
-		if(block == 0)
-			returnValue = 12 * colorWeight;
-		if(block == 1)
-			returnValue = 4 * colorWeight;
-	}
-	else if(count == 3) {
-		if(block == 0)
-			returnValue = 480 * colorWeight; // 3개에서 1쪽 막힌거와 안 막힌거의 차이는 크다
-		if(block == 1)
-			returnValue = 16 * colorWeight;
-	}
-	else if(count == 4) {
-		if(block == 0)
-			returnValue = 1920 * colorWeight; // 사실상 게임 끝
-		if(block == 1)
-			returnValue = 128 * colorWeight;
-	}
-	else { // count == 5
-		returnValue = 19200 * colorWeight; // 그냥 게임 끝
-	}
-	return returnValue;
+	// --------------------------------------------------------------------
+	// 연속돌 1개 + 1개 막힘
+	returnValue += BlockAry[1][1] * 1;
+	// 연속돌 1개 + 0개 막힘
+	returnValue += BlockAry[1][0] * 3;
+	// --------------------------------------------------------------------
+	// 연속돌 2개 + 1개 막힘
+	returnValue += BlockAry[2][1] * 6;
+	// 연속돌 2개 + 0개 막힘
+	returnValue += BlockAry[2][0] * 9;
+	// --------------------------------------------------------------------
+	// 연속돌 3개 + 1개 막힘
+	returnValue += BlockAry[3][1] * 18;
+	// 연속돌 3개 + 0개 막힘
+	if (BlockAry[3][0] >= 2)
+		returnValue += 540;					/* 엔딩조건 */
+	else
+		returnValue += BlockAry[3][0] * 27;
+	// --------------------------------------------------------------------
+	// 연속돌 4개 + 1개 막힘
+	if (BlockAry[4][1] >= 2)
+		returnValue += 1080;				/* 엔딩조건 */
+	else
+		returnValue += BlockAry[4][1] * 180;
+	// 연속돌 4개 + 0개 막힘
+	returnValue += BlockAry[4][0] * 1080;	/* 엔딩조건 */
+	// --------------------------------------------------------------------
+	// 연속돌 5개
+	returnValue += BlockAry[5][2] * 10800;	/* 엔딩조건 */
+	returnValue += BlockAry[5][1] * 10800;	/* 엔딩조건 */
+	returnValue += BlockAry[5][0] * 10800;	/* 엔딩조건 */
+	// --------------------------------------------------------------------
+
+	return (int)(returnValue * colorWeight);
 }
 class Board {
 private:
@@ -132,78 +138,99 @@ public:
 		new_y = _y;
 		// 바둑알을 놓으면서 5개가 되는지 확인
 		int x, y, i;
+		int BlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 카운트(몇개인지)
 		for (y = -1; y <= MAXXY; y++) {
 			for (x = -1; x <= MAXXY; x++) {
 				int current = boardValue(x, y); // 현재 위치의 상태
-				int myCount, enemy;
+				int myCount, enemy, blockCount;
 				int right = boardValue(x + 1, y);
 				int rightDown = boardValue(x + 1, y + 1);
 				int down = boardValue(x, y + 1);
 				int downLeft = boardValue(x - 1, y + 1);
 
-				if ((right == color) && current != right) { // right가 바둑알이면서 현재 위치의 상태와 다를 때
+				if ((right == WHITE || right == BLACK) && current != right) { // right가 바둑알이면서 현재 위치의 상태와 다를 때
 					enemy = (right == WHITE) ? BLACK : WHITE;
 					myCount = 1;
-					for(i = 2; i <= 5; i++) {
+					blockCount = 0; // 좌우에 막힌 개수(최대 2)
+					if (current == OUTBD || current == enemy)
+						blockCount = 1; // 시작점이 바둑판 외부이거나 적이라면 blockCount가 1로 시작(이미 한 면이 막혔으므로)
+					for (i = 2; i <= 5; i++) {
 						int tempVal = boardValue(x + i, y);
-						if(tempVal == OUTBD || tempVal == enemy) {
+						if (tempVal == OUTBD || tempVal == enemy) {
+							blockCount++; // 찾은 장소가 바둑판 밖이거나 적이면 blockCount를 +1 하고 break
 							break;
 						}
-						if(tempVal == EMPTY)
+						if (tempVal == EMPTY)
 							break;
 						myCount++;
 					}
-					if(myCount == 5)
-						return true;
+					BlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, right);
 				}
-				if ((rightDown == color) && current != rightDown) { // right-down가 바둑알이면서 현재 위치의 상태와 다를 때
+				if ((rightDown == WHITE || rightDown == BLACK) && current != rightDown) { // right-down가 바둑알이면서 현재 위치의 상태와 다를 때
 					enemy = (rightDown == WHITE) ? BLACK : WHITE;
 					myCount = 1;
-					for(i = 2; i <= 5; i++) {
+					blockCount = 0; // 좌우에 막힌 개수(최대 2)
+					if (current == OUTBD || current == enemy)
+						blockCount = 1; // 시작점이 바둑판 외부이거나 적이라면 blockCount가 1로 시작(이미 한 면이 막혔으므로)
+					for (i = 2; i <= 5; i++) {
 						int tempVal = boardValue(x + i, y + i);
-						if(tempVal == OUTBD || tempVal == enemy) {
+						if (tempVal == OUTBD || tempVal == enemy) {
+							blockCount++; // 찾은 장소가 바둑판 밖이거나 적이면 blockCount를 +1 하고 break
 							break;
 						}
-						if(tempVal == EMPTY)
+						if (tempVal == EMPTY)
 							break;
 						myCount++;
 					}
-					if(myCount == 5)
-						return true;
+					BlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, rightDown);
 				}
-				if ((down == color) && current != down) { // down가 바둑알이면서 현재 위치와는 다를 때
+				if ((down == WHITE || down == BLACK) && current != down) { // down가 바둑알이면서 현재 위치와는 다를 때
 					enemy = (down == WHITE) ? BLACK : WHITE;
 					myCount = 1;
-					for(i = 2; i <= 5; i++) {
+					blockCount = 0; // 좌우에 막힌 개수(최대 2)
+					if (current == OUTBD || current == enemy)
+						blockCount = 1; // 시작점이 바둑판 외부이거나 적이라면 blockCount가 1로 시작(이미 한 면이 막혔으므로)
+					for (i = 2; i <= 5; i++) {
 						int tempVal = boardValue(x, y + i);
-						if(tempVal == OUTBD || tempVal == enemy) {
+						if (tempVal == OUTBD || tempVal == enemy) {
+							blockCount++; // 찾은 장소가 바둑판 밖이거나 적이면 blockCount를 +1 하고 break
 							break;
 						}
-						if(tempVal == EMPTY)
+						if (tempVal == EMPTY)
 							break;
 						myCount++;
 					}
-					if(myCount == 5)
-						return true;
+					BlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, down);
 				}
-				if ((downLeft == color) && current != downLeft) { // down-left가 바둑알이면서 현재 위치와는 다를 때
+				if ((downLeft == WHITE || downLeft == BLACK) && current != downLeft) { // down-left가 바둑알이면서 현재 위치와는 다를 때
 					enemy = (downLeft == WHITE) ? BLACK : WHITE;
 					myCount = 1;
-					for(i = 2; i <= 5; i++) {
+					blockCount = 0; // 좌우에 막힌 개수(최대 2)
+					if (current == OUTBD || current == enemy)
+						blockCount = 1; // 시작점이 바둑판 외부이거나 적이라면 blockCount가 1로 시작(이미 한 면이 막혔으므로)
+					for (i = 2; i <= 5; i++) {
 						int tempVal = boardValue(x - i, y + i);
-						if(tempVal == OUTBD || tempVal == enemy) {
+						if (tempVal == OUTBD || tempVal == enemy) {
+							blockCount++; // 찾은 장소가 바둑판 밖이거나 적이면 blockCount를 +1 하고 break
 							break;
 						}
-						if(tempVal == EMPTY)
+						if (tempVal == EMPTY)
 							break;
 						myCount++;
 					}
-					if(myCount == 5)
-						return true;
+					BlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, downLeft);
 				}
 			}
 		}
-		return false;
+		//if (BlockAry[3][2] >= 2 || BlockAry[4][1] >= 2 || BlockAry[4][2] >= 1 || BlockAry[5][0] >= 1 || BlockAry[5][1] >= 1 || BlockAry[5][2] >= 1)
+		if (BlockAry[5][0] >= 1 || BlockAry[5][1] >= 1 || BlockAry[5][2] >= 1)
+			return true;
+		else
+			return false;
 	}
 	void setXY(int x, int y)
 	{
@@ -217,8 +244,16 @@ public:
 	}
 	void evaluation(int depth)
 	{
-		int x, y, i;
+		int x, y, i, j;
 		int tempEval = 0;
+		int MCBlockAry[6][3], ECBlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 카운트(몇개인지)
+		// Init Ary
+		for (int i = 0; i < 6; i++) {
+			for (int j = 0; j < 3; j++) {
+				MCBlockAry[i][j] = 0;
+				ECBlockAry[i][j] = 0;
+			}
+		}
 		// 바둑판에 배치된 모든 말에 대해 검사한다.
 		for (y = -1; y <= MAXXY; y++) {
 			for (x = -1; x <= MAXXY; x++) {
@@ -245,7 +280,11 @@ public:
 							break;
 						myCount++;
 					}
-					tempEval += getBlockScore(myCount, blockCount, right);
+					if (right == MC)
+						MCBlockAry[myCount][blockCount]++;
+					else
+						ECBlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, right);
 				}
 				if ((rightDown == WHITE || rightDown == BLACK) && current != rightDown) { // right-down가 바둑알이면서 현재 위치의 상태와 다를 때
 					enemy = (rightDown == WHITE) ? BLACK : WHITE;
@@ -263,7 +302,11 @@ public:
 							break;
 						myCount++;
 					}
-					tempEval += getBlockScore(myCount, blockCount, rightDown);
+					if (rightDown == MC)
+						MCBlockAry[myCount][blockCount]++;
+					else
+						ECBlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, rightDown);
 				}
 				if ((down == WHITE || down == BLACK) && current != down) { // down가 바둑알이면서 현재 위치와는 다를 때
 					enemy = (down == WHITE) ? BLACK : WHITE;
@@ -281,7 +324,11 @@ public:
 							break;
 						myCount++;
 					}
-					tempEval += getBlockScore(myCount, blockCount, down);
+					if (down == MC)
+						MCBlockAry[myCount][blockCount]++;
+					else
+						ECBlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, down);
 				}
 				if ((downLeft == WHITE || downLeft == BLACK) && current != downLeft) { // down-left가 바둑알이면서 현재 위치와는 다를 때
 					enemy = (downLeft == WHITE) ? BLACK : WHITE;
@@ -299,10 +346,16 @@ public:
 							break;
 						myCount++;
 					}
-					tempEval += getBlockScore(myCount, blockCount, downLeft);
+					if (downLeft == MC)
+						MCBlockAry[myCount][blockCount]++;
+					else
+						ECBlockAry[myCount][blockCount]++;
+					//tempEval += getBlockScore(myCount, blockCount, downLeft);
 				}
 			}
 		}
+		tempEval += getBlockScore(MCBlockAry, MC);
+		tempEval += getBlockScore(ECBlockAry, EC);
 		eval = tempEval * depth * 2;
 	}
 };
@@ -445,3 +498,4 @@ void f201701001(int *NewX, int *NewY, int mc, int CurTurn)
 	}
 
 }
+
