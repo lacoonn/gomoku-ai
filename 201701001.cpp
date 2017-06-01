@@ -158,11 +158,11 @@ public:
 		new_x = _x;
 		new_y = _y;
 		// 바둑알을 놓으면서 5개가 되는지 확인
-		int x, y, i;
+		int x, y, i, j;
 		int BlockAry[6][3]; // 0~5 연속된 돌의 개수, 0~2 카운트(몇개인지)
 		// Init Ary
-		for (int i = 0; i < 6; i++) {
-			for (int j = 0; j < 3; j++) {
+		for (i = 0; i < 6; i++) {
+			for (j = 0; j < 3; j++) {
 				BlockAry[i][j] = 0;
 			}
 		}
@@ -468,21 +468,35 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 					if(nextNode.addXY(i, j, MC)) { // xy 경우의 수 대입(5개짜리 돌이 있으면 true)
 						nextNode.evaluation(depth);
 						v = nextNode.getEval();
-						printf("five in a raw\n");
+						//printf("five in a raw\n");
 					}
 					else {
 						// 반환받은 노드의 eval값만 사용하고 나머지는 버림(어차피 x, y값은 첫 함수의 값을 반환해야하기때문에)
 						v = minimax(nextNode, depth - 1, alpha, beta, false).getEval();
 					}
+					// 로그
+					output << "Maxplayer => X: " << i << ", Y: " << j << endl;
+					output << "Maxplayer Eval: " << v << endl;
+					// log
 					bestValue = maxNode(bestValue, v);
 					if (bestValue == v) {
 						bestX = i;
 						bestY = j;
 					}
-
+					if (i == 7 && j == 7) {
+						// 로그
+						//output << "Maxplayer => X: " << bestX << ", Y: " << bestY << endl;
+						//output << "Maxplayer Eval: " << bestValue << endl;
+						// log
+					}
+					
 					// alpha-beta pruning
 					alpha = maxNode(alpha, bestValue);
-					if (beta <= alpha) {
+					if (beta < alpha) {
+						// 로그
+						//output << "Maxplayer => X: " << bestX << ", Y: " << bestY << endl;
+						//output << "Maxplayer Eval: " << bestValue << endl;
+						// 로그
 						node.setEval(bestValue);
 						node.setXY(bestX, bestY);
 						return node;
@@ -492,6 +506,10 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 			}
 		}
 		// node 변수의 eval, new_x, new_y 값을 설정
+		// 로그
+	//	output << "Maxplayer => X: " << bestX << ", Y: " << bestY << endl;
+		//output << "Maxplayer Eval: " << bestValue << endl;
+		// 로그
 		node.setEval(bestValue);
 		node.setXY(bestX, bestY);
 		return node;
@@ -519,17 +537,26 @@ Board minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
 						bestX = i;
 						bestY = j;
 					}
-
+					
 					// alpha-beta pruning
 					beta = minNode(beta, bestValue);
-					if (beta <= alpha) {
+					if (beta < alpha) {
+						// 로그
+						output << "Minplayer => X: " << bestX << ", Y: " << bestY << endl;
+						output << "Minplayer Eval: " << bestValue << endl;
+						// 로그
 						node.setEval(bestValue);
 						node.setXY(bestX, bestY);
 						return node;
 					}
+					
 				}
 			}
 		}
+		// 로그
+		output << "Minplayer => X: " << bestX << ", Y: " << bestY << endl;
+		output << "Minplayer Eval: " << bestValue << endl;
+		// 로그
 		node.setEval(bestValue);
 		node.setXY(bestX, bestY);
 		return node;
